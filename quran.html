@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quran Verse Question Generator</title>
+</head>
+
+<body>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        label {
+            display: block;
+            margin: 10px 0 5px;
+        }
+
+        input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .question {
+            margin: 10px 0;
+            padding: 10px;
+            background: #e9ecef;
+            border-radius: 5px;
+        }
+    </style>
+    <div class="container">
+        <h1>Quran Verse Question Generator</h1>
+        <label for="numQuestions">Number of Questions:</label>
+        <input type="number" id="numQuestions" min="1" max="10" value="5">
+
+        <label for="surahRange">Surah Range (e.g., 1-2):</label>
+        <input type="text" id="surahRange" placeholder="1-2" value="7-8">
+
+        <button id="generateBtn">Generate Questions</button>
+
+        <div id="questionsContainer"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/quran-meta/dist/quran-meta.min.js"></script>
+    <script>
+        document.getElementById('generateBtn').addEventListener('click', generateQuestions);
+
+        async function generateQuestions() {
+            const numQuestions = parseInt(document.getElementById('numQuestions').value);
+            const surahRange = document.getElementById('surahRange').value.split('-').map(Number);
+
+            if (isNaN(numQuestions) || numQuestions < 1 || !surahRange[0] || !surahRange[1]) {
+                alert('Please enter valid inputs.');
+                return;
+            }
+
+            const questionsContainer = document.getElementById('questionsContainer');
+            questionsContainer.innerHTML = ''; // Clear previous questions
+
+            const ayahIDs = getAyahIDs(surahRange[0], surahRange[1], numQuestions);
+            const verses = await fetchVerses(ayahIDs);
+
+            console.log(quranMeta.getSurahMeta(60)[1]);
+
+            verses.forEach((verse, index) => {
+                const question = document.createElement('div');
+                question.className = 'question';
+                question.innerHTML = `Question ${index + 1}: What comes after "${verse.begins}"? (Surah:Verse ${verse.surah}:${verse.verse})`;
+                questionsContainer.appendChild(question);
+            });
+        }
+
+        function getAyahIDs(startSurah, endSurah, count) {
+            const ayahIDs = [];
+            for (let surah = startSurah; surah <= endSurah; surah++) {
+                const versesInSurah = quranMeta.getSurahMeta(surah)[1];
+                for (let verse = 1; verse <= versesInSurah; verse++) {
+                    ayahIDs.push({ surah, verse });
+                }
+            }
+            // Shuffle and slice to get the desired number of questions
+            return ayahIDs.sort(() => 0.5 - Math.random()).slice(0, count);
+        }
+
+        async function fetchVerses(ayahIDs) {
+            const verses = [];
+            for (const { surah, verse } of ayahIDs) {
+                const response = await fetch(`https://api.alquran.cloud/v1/ayah/${surah}:${verse}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    verses.push({
+                        surah,
+                        verse,
+                        begins: data.data.text // Get the first 20 characters of the verse
+                    });
+                } else {
+                    console.error('Error fetching verse:', response.statusText);
+                }
+            }
+            return verses;
+        }
+    </script>
+
+</body>
+
+</html>
